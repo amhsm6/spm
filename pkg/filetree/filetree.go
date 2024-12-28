@@ -152,7 +152,7 @@ func (t *Tree) Copy(dst string) error {
 
 		switch node := subtree.Node.(type) {
 		case NodeDir:
-			err := os.Mkdir(path, os.ModePerm)
+			err := os.MkdirAll(path, os.ModePerm)
 			if err != nil {
 				return err
 			}
@@ -164,6 +164,8 @@ func (t *Tree) Copy(dst string) error {
 			if err != nil {
 				return err
 			}
+
+			defer file.Close()
 
 			_, err = file.Write(node.Data)
 			if err != nil {

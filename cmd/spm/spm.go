@@ -71,8 +71,8 @@ func main() {
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "root",
-				Aliases: []string{"r"},
+				Name:    "dest",
+				Aliases: []string{"d"},
 				Value:   "/home/anton/src/spm/test",
 			},
 		},
@@ -91,7 +91,7 @@ func main() {
 
 			fmt.Println(tree)
 
-			dst := c.String("root")
+			dst := c.String("dest")
 			tree.Copy(dst)
 
 			fmt.Printf("Transferred tree to %s\n", dst)

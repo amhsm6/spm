@@ -1,10 +1,10 @@
 package filetree
 
 import (
-	"io"
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -197,8 +197,8 @@ func (t *Tree) render(bars []bool) string {
 		bytes := len(node.Data)
 
 		size := fmt.Sprintf("%d", bytes)
-		if bytes > 1024 * 1024 {
-			size = fmt.Sprintf("%.2f MB", float32(bytes) / (1024 * 1024))
+		if bytes > 1024*1024 {
+			size = fmt.Sprintf("%.2f MB", float32(bytes) / (1024*1024))
 		} else if bytes > 1024 {
 			size = fmt.Sprintf("%.2f KB", float32(bytes) / 1024)
 		}
@@ -212,7 +212,7 @@ func (t *Tree) render(bars []bool) string {
 
 	index := 0
 	for _, subtree := range t.Children {
-		for _, b := range bars { 
+		for _, b := range bars {
 			if b {
 				out.WriteString("│")
 			} else {
@@ -221,7 +221,7 @@ func (t *Tree) render(bars []bool) string {
 			out.WriteString(strings.Repeat(" ", 3))
 		}
 
-		if index == len(t.Children) - 1 {
+		if index == len(t.Children)-1 {
 			out.WriteString("└── ")
 			out.WriteString(subtree.render(append(bars, false)))
 		} else {

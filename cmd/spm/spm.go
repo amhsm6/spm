@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"spm/pkg/filetree"
-
 	"github.com/charmbracelet/log"
 	"github.com/urfave/cli/v3"
 )
@@ -14,22 +13,22 @@ import (
 func main() {
 	var paths []string
 	buildCmd := &cli.Command{
-		Name: "build",
-		Aliases: []string{"b"},
+		Name:      "build",
+		Aliases:   []string{"b"},
 		UsageText: "spm build [OPTIONS] PATH...",
 		Arguments: []cli.Argument{
 			&cli.StringArg{
-				Name: "PATH",
-				Min: 1,
-				Max: -1,
+				Name:   "PATH",
+				Min:    1,
+				Max:    -1,
 				Values: &paths,
 			},
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name: "output",
+				Name:    "output",
 				Aliases: []string{"o"},
-				Value: "package.spk",
+				Value:   "package.spk",
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
@@ -59,22 +58,22 @@ func main() {
 
 	var pkg string
 	installCmd := &cli.Command{
-		Name: "install",
-		Aliases: []string{"i"},
+		Name:      "install",
+		Aliases:   []string{"i"},
 		UsageText: "spm install [OPTIONS] PACKAGE",
 		Arguments: []cli.Argument{
 			&cli.StringArg{
-				Name: "PACKAGE",
-				Min: 1,
-				Max: 1,
+				Name:        "PACKAGE",
+				Min:         1,
+				Max:         1,
 				Destination: &pkg,
 			},
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name: "root",
+				Name:    "root",
 				Aliases: []string{"r"},
-				Value: "/home/anton/src/spm/test",
+				Value:   "/home/anton/src/spm/test",
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
@@ -102,10 +101,10 @@ func main() {
 	}
 
 	cmd := &cli.Command{
-		Name: "spm",
-		UsageText: "spm <COMMAND>",
+		Name:            "spm",
+		UsageText:       "spm <COMMAND>",
 		HideHelpCommand: true,
-		Commands: []*cli.Command{buildCmd, installCmd},
+		Commands:        []*cli.Command{buildCmd, installCmd},
 	}
 
 	err := cmd.Run(context.Background(), os.Args)

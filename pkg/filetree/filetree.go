@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 type Tree struct {
@@ -56,8 +58,8 @@ func buildTree(path string) (*Tree, error) {
 
 	rootname := filepath.Base(path) + string(os.PathSeparator)
 	tree := &Tree{
-		Name: rootname,
-		Node: NodeDir{},
+		Name:     rootname,
+		Node:     NodeDir{},
 		Children: make(map[string]*Tree),
 	}
 
@@ -65,8 +67,7 @@ func buildTree(path string) (*Tree, error) {
 		entryname := entry.Name()
 		entrypath := filepath.Join(path, entryname)
 
-		switch entry.Type() {
-		case os.ModeDir:
+		if entry.IsDir() {
 			subtree, err := buildTree(entrypath)
 			if err != nil {
 				return nil, err
@@ -75,10 +76,10 @@ func buildTree(path string) (*Tree, error) {
 			dirname := entryname + string(os.PathSeparator)
 			tree.Children[dirname] = subtree
 
-		case os.ModeSymlink:
-			return nil, errors.New("symlinks not implemented")
+			continue
+		}
 
-		default:
+		if entry.Type().IsRegular() {
 			data, err := os.ReadFile(entrypath)
 			if err != nil {
 				return nil, err
@@ -86,6 +87,34 @@ func buildTree(path string) (*Tree, error) {
 
 			node := NodeFile{data}
 			tree.Children[entryname] = &Tree{Name: entryname, Node: node}
+
+			continue
+		}
+
+		switch entry.Type() {
+		case os.ModeSymlink:
+			target, err := os.Readlink(entrypath)
+			if err != nil {
+				return nil, err
+			}
+
+			if filepath.IsAbs(target) {
+				abspath, err := filepath.Abs(path)
+				if err != nil {
+					return nil, err
+				}
+
+				target, err = filepath.Rel(abspath, target)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			node := NodeSymLink{Target: target}
+			tree.Children[entryname] = &Tree{Name: entryname, Node: node}
+
+		default:
+			return nil, fmt.Errorf("file mode %v of %v unsupported", entry.Type(), entrypath)
 		}
 	}
 
@@ -142,10 +171,13 @@ func (t *Tree) Copy(dst string) error {
 			}
 
 		case NodeSymLink:
-			return errors.New("symlinks not implemented")
+			err := os.Symlink(node.Target, path)
+			if err != nil {
+				return err
+			}
 
 		default:
-			return errors.New("Impossible")
+			return errors.New("impossible")
 		}
 	}
 
@@ -160,7 +192,7 @@ func (t *Tree) render(bars []bool) string {
 	var out strings.Builder
 
 	if _, ok := t.Node.(NodeDir); ok {
-		out.WriteString("\u001b[38;2;254;40;162m" + t.Name + "\u001b[0m\n")
+		color.RGB(254, 40, 162).Fprintln(&out, t.Name)
 	} else if node, ok := t.Node.(NodeFile); ok {
 		bytes := len(node.Data)
 
@@ -171,7 +203,11 @@ func (t *Tree) render(bars []bool) string {
 			size = fmt.Sprintf("%.2f KB", float32(bytes) / 1024)
 		}
 
-		out.WriteString(fmt.Sprintf("%s \u001b[32m{%s}\u001b[0m\n", t.Name, size))
+		out.WriteString(t.Name + color.GreenString(" {%s}\n", size))
+	} else if node, ok := t.Node.(NodeSymLink); ok {
+		out.WriteString(t.Name + color.CyanString(" {%s}\n", node.Target))
+	} else {
+		panic("impossible")
 	}
 
 	index := 0

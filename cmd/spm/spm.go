@@ -9,14 +9,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"spm/pkg/filetree"
 	"github.com/charmbracelet/log"
 	"github.com/urfave/cli/v3"
+	"spm/pkg/filetree"
 )
 
 const LOCKDIR = "/home/anton/src/spm/var/lib/spm"
 
 func main() {
+	gob.Register(filetree.NodeFile{})
+	gob.Register(filetree.NodeDir{})
+	gob.Register(filetree.NodeSymLink{})
+
 	err := os.MkdirAll(LOCKDIR, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
@@ -150,11 +154,64 @@ func main() {
 		},
 	}
 
+	var lockname string
+	removeCmd := &cli.Command{
+		Name:      "remove",
+		Aliases:   []string{"r"},
+		UsageText: "spm remove [OPTIONS] PACKAGE",
+		Arguments: []cli.Argument{
+			&cli.StringArg{
+				Name:        "PACKAGE",
+				Min:         1,
+				Max:         1,
+				Destination: &lockname,
+			},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			lockpath := filepath.Join(LOCKDIR, lockname)
+
+			lockfile, err := os.Open(lockpath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println("Package is not installed")
+				}
+
+				return err
+			}
+			
+			defer lockfile.Close()
+
+			lock := &struct{ Dest string; Tree *filetree.Tree }{}
+
+			dec := gob.NewDecoder(lockfile)
+			err = dec.Decode(lock)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(lock.Tree)
+
+			err = lock.Tree.Remove(lock.Dest)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Removed tree from %s\n", lock.Dest)
+
+			err = os.Remove(lockpath)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	}
+
 	cmd := &cli.Command{
 		Name:            "spm",
 		UsageText:       "spm <COMMAND>",
 		HideHelpCommand: true,
-		Commands:        []*cli.Command{buildCmd, installCmd},
+		Commands:        []*cli.Command{buildCmd, installCmd, removeCmd},
 	}
 
 	err = cmd.Run(context.Background(), os.Args)

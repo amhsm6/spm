@@ -122,20 +122,12 @@ func buildTree(path string) (*Tree, error) {
 }
 
 func (t *Tree) Encode(w io.Writer) error {
-	gob.Register(NodeFile{})
-	gob.Register(NodeDir{})
-	gob.Register(NodeSymLink{})
-
 	enc := gob.NewEncoder(w)
 	return enc.Encode(t)
 }
 
 func Decode(r io.Reader) (*Tree, error) {
 	tree := &Tree{}
-
-	gob.Register(NodeFile{})
-	gob.Register(NodeDir{})
-	gob.Register(NodeSymLink{})
 
 	dec := gob.NewDecoder(r)
 	err := dec.Decode(tree)
@@ -152,7 +144,7 @@ func (t *Tree) Copy(dst string) error {
 
 		switch node := subtree.Node.(type) {
 		case NodeDir:
-			err := os.MkdirAll(path, os.ModePerm)
+			err := os.Mkdir(path, os.ModePerm)
 			if err != nil {
 				return err
 			}
@@ -174,6 +166,36 @@ func (t *Tree) Copy(dst string) error {
 
 		case NodeSymLink:
 			err := os.Symlink(node.Target, path)
+			if err != nil {
+				return err
+			}
+
+		default:
+			return errors.New("impossible")
+		}
+	}
+
+	return nil
+}
+
+func (t *Tree) Remove(dst string) error {
+	for _, subtree := range t.Children {
+		path := filepath.Join(dst, subtree.Name)
+
+		switch subtree.Node.(type) {
+		case NodeDir:
+			err := subtree.Remove(path)
+			if err != nil {
+				return err
+			}
+
+			err = os.Remove(path)
+			if err != nil {
+				return err
+			}
+		
+		case NodeFile, NodeSymLink:
+			err := os.Remove(path)
 			if err != nil {
 				return err
 			}

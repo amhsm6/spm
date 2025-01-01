@@ -145,7 +145,7 @@ func (t *Tree) Copy(dst string) error {
 		switch node := subtree.Node.(type) {
 		case NodeDir:
 			err := os.Mkdir(path, os.ModePerm)
-			if err != nil {
+			if err != nil && !os.IsExist(err) {
 				return err
 			}
 
@@ -190,13 +190,13 @@ func (t *Tree) Remove(dst string) error {
 			}
 
 			err = os.Remove(path)
-			if err != nil {
+			if err != nil && !os.IsNotExist(err) {
 				return err
 			}
 		
 		case NodeFile, NodeSymLink:
 			err := os.Remove(path)
-			if err != nil {
+			if err != nil && !os.IsNotExist(err) {
 				return err
 			}
 

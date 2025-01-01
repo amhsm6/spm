@@ -25,18 +25,21 @@ func main() {
 	}
 	
 	installCmd := &cobra.Command{
-		Use:  "install",
+		Use:  "install PACKAGE_NAME PATHS...",
 		Args: cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			pkgname := args[0]
 			paths := args[1:]
 
+			//prefix, err := cmd.Flags().GetString("prefix")
+			//if err != nil {
+			//	log.Fatal(err)
+			//}
+
 			dest, err := cmd.Flags().GetString("dest")
 			if err != nil {
 				log.Fatal(err)
 			}
-
-			fmt.Printf("%s %s\n", color.CyanString("Install"), pkgname)
 
 			tree, err := filetree.Build(paths)
 			if err != nil {
@@ -44,6 +47,7 @@ func main() {
 			}
 
 			fmt.Println(tree)
+			fmt.Printf("%s %s\n", color.CyanString("Installing"), pkgname)
 
 			lock := struct{ Dest string; Tree *filetree.Tree }{
 				Dest: dest,
@@ -72,21 +76,20 @@ func main() {
 	}
 
 	flags := installCmd.Flags()
-	flags.StringP("dest", "d", "/home/anton/src/spm/test", "more usage")
+	// flags.StringP("prefix", "p", "/", "Prefix of the built tree")
+	flags.StringP("dest", "d", "/home/anton/src/spm/test", "Destination path")
 
 	removeCmd := &cobra.Command{
-		Use:  "remove",
+		Use:  "remove PACKAGE_NAME",
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			pkgname := args[0]
-
-			fmt.Printf("%s %s\n", color.RedString("Remove"), pkgname)
 
 			lockpath := filepath.Join(LOCKDIR, pkgname)
 			lockfile, err := os.Open(lockpath)
 			if err != nil {
 				if os.IsNotExist(err) {
-					fmt.Println("Package is not installed")
+					fmt.Printf("%s Package not found\n", color.RedString("ERROR"))
 					return
 				} else {
 					log.Fatal(err)
@@ -108,7 +111,9 @@ func main() {
 
 			tree := lock.Tree
 			dest := lock.Dest
+
 			fmt.Println(tree)
+			fmt.Printf("%s %s\n", color.RedString("Removing"), pkgname)
 
 			err = tree.Remove(dest)
 			if err != nil {

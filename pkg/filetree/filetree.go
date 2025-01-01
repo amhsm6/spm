@@ -189,9 +189,20 @@ func (t *Tree) Remove(dst string) error {
 				return err
 			}
 
-			err = os.Remove(path)
-			if err != nil && !os.IsNotExist(err) {
+			empty, err := isEmpty(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return nil
+				}
+
 				return err
+			}
+
+			if empty {
+				err = os.Remove(path)
+				if err != nil {
+					return err
+				}
 			}
 		
 		case NodeFile, NodeSymLink:
@@ -206,6 +217,22 @@ func (t *Tree) Remove(dst string) error {
 	}
 
 	return nil
+}
+
+func isEmpty(dir string) (bool, error) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+
+	if errors.Is(err, io.EOF) {
+		return true, nil
+	}
+
+	return false, err
 }
 
 func (t *Tree) String() string {

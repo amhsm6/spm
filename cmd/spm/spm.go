@@ -1,151 +1,146 @@
 package main
 
 import (
-	"encoding/gob"
-	"fmt"
-	"os"
-	"path/filepath"
+    "encoding/gob"
+    "fmt"
+    "os"
+    "path/filepath"
 
-	"github.com/charmbracelet/log"
-	"github.com/fatih/color"
-	"github.com/spf13/cobra"
-	"spm/pkg/filetree"
+    "github.com/fatih/color"
+    "github.com/spf13/cobra"
+    "spm/pkg/filetree"
+    "spm/pkg/util"
 )
 
 const LOCKDIR = "/var/lib/spm"
 
 func main() {
-	gob.Register(filetree.NodeFile{})
-	gob.Register(filetree.NodeDir{})
-	gob.Register(filetree.NodeSymLink{})
+    gob.Register(filetree.NodeFile{})
+    gob.Register(filetree.NodeDir{})
+    gob.Register(filetree.NodeSymLink{})
 
-	err := os.MkdirAll(LOCKDIR, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-	
-	installCmd := &cobra.Command{
-		Use:  "install PACKAGE_NAME PATHS...",
-		Args: cobra.MinimumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			pkgname := args[0]
-			paths := args[1:]
+    err := os.MkdirAll(LOCKDIR, os.ModePerm)
+    if err != nil {
+        util.Error(err)
+    }
+    
+    installCmd := &cobra.Command{
+        Use:  "install PACKAGE_NAME PATHS...",
+        Short: "Install a package",
+        Args: cobra.MinimumNArgs(2),
+        Run: func(cmd *cobra.Command, args []string) {
+            pkgname := args[0]
+            paths   := args[1:]
 
-			lockpath := filepath.Join(LOCKDIR, pkgname)
-			_, err := os.Stat(lockpath)
-			if !os.IsNotExist(err) {
-				if err == nil {
-					fmt.Printf("%s Package already exists\n", color.RedString("ERROR"))
-					return
-				} else {
-					log.Fatal(err)
-				}
-			}
+            lockpath := filepath.Join(LOCKDIR, pkgname)
+            if util.Exists(lockpath) {
+                util.Error("Package already exists")
+            }
 
-			prefix, err := cmd.Flags().GetString("prefix")
-			if err != nil {
-				log.Fatal(err)
-			}
+            prefix, err := cmd.Flags().GetString("prefix")
+            if err != nil {
+                util.Error(err)
+            }
 
-			dest, err := cmd.Flags().GetString("dest")
-			if err != nil {
-				log.Fatal(err)
-			}
+            dest, err := cmd.Flags().GetString("dest")
+            if err != nil {
+                util.Error(err)
+            }
 
-			tree, err := filetree.Build(paths, prefix)
-			if err != nil {
-				log.Fatal(err)
-			}
+            tree, err := filetree.Build(paths, prefix)
+            if err != nil {
+                util.Error(err)
+            }
 
-			fmt.Println(tree)
-			fmt.Printf("%s %s\n", color.CyanString("Installing"), pkgname)
+            fmt.Println(tree)
+            fmt.Printf("%s %s\n", color.CyanString("Installing"), pkgname)
 
-			lock := struct{ Dest string; Tree *filetree.Tree }{
-				Dest: dest,
-				Tree: tree,
-			}
+            lock := struct{ Dest string; Tree *filetree.Tree }{
+                Dest: dest,
+                Tree: tree,
+            }
 
-			lockfile, err := os.Create(lockpath)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer lockfile.Close()
+            lockfile, err := os.Create(lockpath)
+            if err != nil {
+                util.Error(err)
+            }
+            defer lockfile.Close()
 
-			enc := gob.NewEncoder(lockfile)
-			err = enc.Encode(lock)
-			if err != nil {
-				log.Fatal(err)
-			}
+            enc := gob.NewEncoder(lockfile)
+            err = enc.Encode(lock)
+            if err != nil {
+                util.Error(err)
+            }
 
-			err = tree.Copy(dest)
-			if err != nil {
-				log.Fatal(err)
-			}
+            err = tree.Copy(dest)
+            if err != nil {
+                util.Error(err)
+            }
 
-			color.Green("Success")
-		},
-	}
+            color.Green("Success")
+        },
+    }
 
-	flags := installCmd.Flags()
-	flags.StringP("prefix", "p", "/", "Prefix of the built tree")
-	flags.StringP("dest", "d", "/", "Destination path")
+    flags := installCmd.Flags()
+    flags.StringP("prefix", "p", "/", "Prefix of the built tree")
+    flags.StringP("dest", "d", "/", "Destination path")
 
-	removeCmd := &cobra.Command{
-		Use:  "remove PACKAGE_NAME",
-		Args: cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			pkgname := args[0]
+    removeCmd := &cobra.Command{
+        Use:  "remove PACKAGE_NAME",
+        Short: "Remove a package",
+        Args: cobra.ExactArgs(1),
+        Run: func(cmd *cobra.Command, args []string) {
+            pkgname := args[0]
 
-			lockpath := filepath.Join(LOCKDIR, pkgname)
-			lockfile, err := os.Open(lockpath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					fmt.Printf("%s Package not found\n", color.RedString("ERROR"))
-					return
-				} else {
-					log.Fatal(err)
-				}
-			}
+            lockpath := filepath.Join(LOCKDIR, pkgname)
+            if !util.Exists(lockpath) {
+                util.Error("Package not found")
+            }
 
-			lock := &struct{ Dest string; Tree *filetree.Tree }{}
+            lockfile, err := os.Open(lockpath)
+            if err != nil {
+                util.Error(err)
+            }
 
-			dec := gob.NewDecoder(lockfile)
-			err = dec.Decode(lock)
-			if err != nil {
-				log.Fatal(err)
-			}
+            lock := &struct{ Dest string; Tree *filetree.Tree }{}
 
-			err = lockfile.Close()
-			if err != nil {
-				log.Fatal(err)
-			}
+            dec := gob.NewDecoder(lockfile)
+            err = dec.Decode(lock)
+            if err != nil {
+                util.Error(err)
+            }
 
-			tree := lock.Tree
-			dest := lock.Dest
+            err = lockfile.Close()
+            if err != nil {
+                util.Error(err)
+            }
 
-			fmt.Println(tree)
-			fmt.Printf("%s %s\n", color.RedString("Removing"), pkgname)
+            tree := lock.Tree
+            dest := lock.Dest
 
-			err = tree.Remove(dest)
-			if err != nil {
-				log.Fatal(err)
-			}
+            fmt.Println(tree)
+            fmt.Printf("%s %s\n", color.RedString("Removing"), pkgname)
 
-			err = os.Remove(lockpath)
-			if err != nil {
-				log.Fatal(err)
-			}
+            err = tree.Remove(dest)
+            if err != nil {
+                util.Error(err)
+            }
 
-			color.Green("Success")
-		},
-	}
+            err = os.Remove(lockpath)
+            if err != nil {
+                util.Error(err)
+            }
 
-	rootCmd := &cobra.Command{
-		Use: "spm",
-		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
-	}
+            color.Green("Success")
+        },
+    }
 
-	rootCmd.AddCommand(installCmd, removeCmd)
+    rootCmd := &cobra.Command{
+        Use: "spm",
+        CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+    }
 
-	rootCmd.Execute()
+    rootCmd.AddCommand(installCmd, removeCmd)
+
+    rootCmd.Execute()
 }

@@ -12,7 +12,7 @@ import (
 	"spm/pkg/filetree"
 )
 
-const LOCKDIR = "/home/anton/src/spm/var/lib/spm"
+const LOCKDIR = "/var/lib/spm"
 
 func main() {
 	gob.Register(filetree.NodeFile{})
@@ -31,17 +31,28 @@ func main() {
 			pkgname := args[0]
 			paths := args[1:]
 
-			//prefix, err := cmd.Flags().GetString("prefix")
-			//if err != nil {
-			//	log.Fatal(err)
-			//}
+			lockpath := filepath.Join(LOCKDIR, pkgname)
+			_, err := os.Stat(lockpath)
+			if !os.IsNotExist(err) {
+				if err == nil {
+					fmt.Printf("%s Package already exists\n", color.RedString("ERROR"))
+					return
+				} else {
+					log.Fatal(err)
+				}
+			}
+
+			prefix, err := cmd.Flags().GetString("prefix")
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			dest, err := cmd.Flags().GetString("dest")
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			tree, err := filetree.Build(paths)
+			tree, err := filetree.Build(paths, prefix)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -54,7 +65,7 @@ func main() {
 				Tree: tree,
 			}
 
-			lockfile, err := os.Create(filepath.Join(LOCKDIR, pkgname))
+			lockfile, err := os.Create(lockpath)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -76,8 +87,8 @@ func main() {
 	}
 
 	flags := installCmd.Flags()
-	// flags.StringP("prefix", "p", "/", "Prefix of the built tree")
-	flags.StringP("dest", "d", "/home/anton/src/spm/test", "Destination path")
+	flags.StringP("prefix", "p", "/", "Prefix of the built tree")
+	flags.StringP("dest", "d", "/", "Destination path")
 
 	removeCmd := &cobra.Command{
 		Use:  "remove PACKAGE_NAME",

@@ -31,7 +31,7 @@ type NodeSymLink struct {
 	Target string
 }
 
-func Build(paths []string) (*Tree, error) {
+func Build(paths []string, prefix string) (*Tree, error) {
 	trees := make(map[string]*Tree)
 	for _, path := range paths {
 		tree, err := buildTree(path)
@@ -44,6 +44,33 @@ func Build(paths []string) (*Tree, error) {
 		} else {
 			trees[tree.Name] = tree
 		}
+	}
+
+	if !filepath.IsAbs(prefix) {
+		return nil, errors.New("prefix must be absolute")
+	}
+
+	for {
+		dir, file := filepath.Split(filepath.Clean(prefix))
+		if filepath.Ext(file) != "" {
+			return nil, errors.New("prefix must contain only directories")
+		}
+
+		if file == "" {
+			break
+		}
+
+		dirname := file + string(os.PathSeparator)
+		tree := &Tree{
+			Name:     dirname,
+			Node:     NodeDir{},
+			Children: trees,
+		}
+
+		trees = make(map[string]*Tree)
+		trees[file] = tree
+		
+		prefix = dir
 	}
 
 	root := &Tree{Name: "/", Node: NodeDir{}, Children: trees}
@@ -85,7 +112,7 @@ func buildTree(path string) (*Tree, error) {
 				return nil, err
 			}
 
-			node := NodeFile{data}
+			node := NodeFile{Data: data}
 			tree.Children[entryname] = &Tree{Name: entryname, Node: node}
 
 			continue
@@ -156,7 +183,6 @@ func (t *Tree) Copy(dst string) error {
 			if err != nil {
 				return err
 			}
-
 			defer file.Close()
 
 			_, err = file.Write(node.Data)

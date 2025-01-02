@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+    "spm/pkg/util"
 )
 
 type Tree struct {
@@ -68,7 +69,7 @@ func Build(paths []string, prefix string) (*Tree, error) {
 		}
 
 		trees = make(map[string]*Tree)
-		trees[file] = tree
+		trees[dirname] = tree
 		
 		prefix = dir
 	}
@@ -171,10 +172,12 @@ func (t *Tree) Copy(dst string) error {
 
 		switch node := subtree.Node.(type) {
 		case NodeDir:
-			err := os.Mkdir(path, os.ModePerm)
-			if err != nil && !os.IsExist(err) {
-				return err
-			}
+            if !util.Exists(path) {
+                err := os.Mkdir(path, os.ModePerm)
+                if err != nil {
+                    return err
+                }
+            }
 
 			subtree.Copy(path)
 		
@@ -215,16 +218,7 @@ func (t *Tree) Remove(dst string) error {
 				return err
 			}
 
-			empty, err := isEmpty(path)
-			if err != nil {
-				if os.IsNotExist(err) {
-					return nil
-				}
-
-				return err
-			}
-
-			if empty {
+			if util.Empty(path) {
 				err = os.Remove(path)
 				if err != nil {
 					return err
@@ -232,10 +226,12 @@ func (t *Tree) Remove(dst string) error {
 			}
 		
 		case NodeFile, NodeSymLink:
-			err := os.Remove(path)
-			if err != nil && !os.IsNotExist(err) {
-				return err
-			}
+            if util.Exists(path) {
+                err := os.Remove(path)
+                if err != nil {
+                    return err
+                }
+            }
 
 		default:
 			return errors.New("impossible")
@@ -243,22 +239,6 @@ func (t *Tree) Remove(dst string) error {
 	}
 
 	return nil
-}
-
-func isEmpty(dir string) (bool, error) {
-	f, err := os.Open(dir)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-
-	_, err = f.Readdir(1)
-
-	if errors.Is(err, io.EOF) {
-		return true, nil
-	}
-
-	return false, err
 }
 
 func (t *Tree) String() string {

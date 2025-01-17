@@ -25,9 +25,9 @@ func main() {
     }
     
     installCmd := &cobra.Command{
-        Use:  "install PACKAGE_NAME PATHS...",
+        Use:   "install PACKAGE_NAME PATHS...",
         Short: "Install a package",
-        Args: cobra.MinimumNArgs(2),
+        Args:  cobra.MinimumNArgs(2),
         Run: func(cmd *cobra.Command, args []string) {
             pkgname := args[0]
             paths   := args[1:]
@@ -86,9 +86,9 @@ func main() {
     flags.StringP("dest", "d", "/", "Destination path")
 
     removeCmd := &cobra.Command{
-        Use:  "remove PACKAGE_NAME",
+        Use:   "remove PACKAGE_NAME",
         Short: "Remove a package",
-        Args: cobra.ExactArgs(1),
+        Args:  cobra.ExactArgs(1),
         Run: func(cmd *cobra.Command, args []string) {
             pkgname := args[0]
 
@@ -136,8 +136,8 @@ func main() {
     }
 
     rootCmd := &cobra.Command{
-        Use: "spm",
-        CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+        Use:               "spm",
+        CompletionOptions: cobra.CompletionOptions{ DisableDefaultCmd: true },
     }
 
     rootCmd.AddCommand(installCmd, removeCmd)

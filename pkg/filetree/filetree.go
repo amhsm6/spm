@@ -74,7 +74,7 @@ func Build(paths []string, prefix string) (*Tree, error) {
         prefix = dir
     }
 
-    root := &Tree{Name: "/", Node: NodeDir{}, Children: trees}
+    root := &Tree{ Name: "/", Node: NodeDir{}, Children: trees }
     return root, nil
 }
 
@@ -113,8 +113,8 @@ func buildTree(path string) (*Tree, error) {
                 return nil, err
             }
 
-            node := NodeFile{Data: data}
-            tree.Children[entryname] = &Tree{Name: entryname, Node: node}
+            node := NodeFile{ Data: data }
+            tree.Children[entryname] = &Tree{ Name: entryname, Node: node }
 
             continue
         }
@@ -138,8 +138,8 @@ func buildTree(path string) (*Tree, error) {
                 }
             }
 
-            node := NodeSymLink{Target: target}
-            tree.Children[entryname] = &Tree{Name: entryname, Node: node}
+            node := NodeSymLink{ Target: target }
+            tree.Children[entryname] = &Tree{ Name: entryname, Node: node }
 
         default:
             return nil, fmt.Errorf("file mode %v of %v unsupported", entry.Type(), entrypath)
@@ -278,7 +278,7 @@ func (t *Tree) render(bars []bool) string {
             out.WriteString(strings.Repeat(" ", 3))
         }
 
-        if index == len(t.Children)-1 {
+        if index == len(t.Children) - 1 {
             out.WriteString("└── ")
             out.WriteString(subtree.render(append(bars, false)))
         } else {

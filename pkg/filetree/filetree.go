@@ -23,7 +23,8 @@ type Tree struct {
 type Node interface{}
 
 type NodeFile struct {
-    Data []byte
+    Data        []byte
+    Permissions os.FileMode
 }
 
 type NodeDir struct{}
@@ -113,7 +114,12 @@ func buildTree(path string) (*Tree, error) {
                 return nil, err
             }
 
-            node := NodeFile{ Data: data }
+            info, err := os.Lstat(entrypath)
+            if err != nil {
+                return nil, err
+            }
+
+            node := NodeFile{ Data: data, Permissions: info.Mode() }
             tree.Children[entryname] = &Tree{ Name: entryname, Node: node }
 
             continue
@@ -189,6 +195,11 @@ func (t *Tree) Copy(dst string) error {
             defer file.Close()
 
             _, err = file.Write(node.Data)
+            if err != nil {
+                return err
+            }
+
+            err = file.Chmod(node.Permissions)
             if err != nil {
                 return err
             }

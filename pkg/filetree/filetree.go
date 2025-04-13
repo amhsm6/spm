@@ -20,7 +20,7 @@ type Tree struct {
     Children map[string]*Tree
 }
 
-type Node interface{}
+type Node any
 
 type NodeFile struct {
     Data        []byte
@@ -80,6 +80,51 @@ func Build(paths []string, prefix string) (*Tree, error) {
 }
 
 func buildTree(path string) (*Tree, error) {
+	stat, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if !stat.IsDir() {
+		name := filepath.Base(path)
+
+        if stat.Mode().IsRegular() {
+            data, err := os.ReadFile(path)
+            if err != nil {
+                return nil, err
+            }
+
+            node := NodeFile{ Data: data, Permissions: stat.Mode() }
+            return &Tree{ Name: name, Node: node }, nil
+        }
+
+        switch stat.Mode() {
+        case os.ModeSymlink:
+            target, err := os.Readlink(path)
+            if err != nil {
+                return nil, err
+            }
+
+            if filepath.IsAbs(target) {
+                abspath, err := filepath.Abs(path)
+                if err != nil {
+                    return nil, err
+                }
+
+                target, err = filepath.Rel(abspath, target)
+                if err != nil {
+                    return nil, err
+                }
+            }
+
+            node := NodeSymLink{ Target: target }
+            return &Tree{ Name: name, Node: node }, nil
+
+        default:
+            return nil, fmt.Errorf("file mode %v of %v unsupported", stat.Mode(), path)
+        }
+	}
+
     entries, err := os.ReadDir(path)
     if err != nil {
         return nil, err

@@ -31,25 +31,27 @@ func Error(a ...any) {
     os.Exit(1)
 }
 
-func WaitForKey() error {
+func WaitConfirm() (bool, error) {
     err := exec.Command("stty", "-F", "/dev/tty", "cbreak").Run()
     if err != nil {
-        return err
+        return false, err
     }
 
-    fmt.Print("Press any key to continue... ")
+    fmt.Print("Proceed? (y/n) ")
 
     buf := make([]byte, 1)
     _, err = os.Stdin.Read(buf)
     if err != nil {
-        return err
+        return false, err
     }
+
+	proceed := buf[0] == byte('y')
 
     err = exec.Command("stty", "-F", "/dev/tty", "-cbreak").Run()
     if err != nil {
-        return err
+        return false, err
     }
 
     fmt.Println()
-    return nil
+    return proceed, nil
 }

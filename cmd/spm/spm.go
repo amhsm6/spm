@@ -53,10 +53,16 @@ func main() {
             }
 
             fmt.Println(tree)
-            err = util.WaitForKey()
+
+			proceed, err := util.WaitConfirm()
             if err != nil {
                 util.Error(err)
             }
+
+			if !proceed {
+				util.Error("Abort")
+			}
+
             fmt.Printf("%s %s\n", color.CyanString("Installing"), pkgname)
 
             lock := struct{ Dest string; Tree *filetree.Tree }{
@@ -123,10 +129,16 @@ func main() {
             dest := lock.Dest
 
             fmt.Println(tree)
-            err = util.WaitForKey()
+
+			proceed, err := util.WaitConfirm()
             if err != nil {
                 util.Error(err)
             }
+
+			if !proceed {
+				util.Error("Abort")
+			}
+
             fmt.Printf("%s %s\n", color.RedString("Removing"), pkgname)
 
             err = tree.Remove(dest)

@@ -230,7 +230,10 @@ func (t *Tree) Copy(dst string) error {
                 }
             }
 
-            subtree.Copy(path)
+			err := subtree.Copy(path)
+			if err != nil {
+				return err
+			}
         
         case NodeFile:
             file, err := os.Create(path)
